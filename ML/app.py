@@ -1,11 +1,15 @@
 import os
+import sys
+
+# Adiciona o diretório atual (pasta ML) ao sys.path para o Python encontrar utils.py
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+if BASE_DIR not in sys.path:
+    sys.path.append(BASE_DIR)
+
 import joblib
 import streamlit as st
 from streamlit_drawable_canvas import st_canvas
 from utils import process_canvas
-
-# Define o caminho absoluto baseado na localização deste próprio arquivo (pasta ML)
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 @st.cache_resource
 def load_model(cenario):
@@ -101,7 +105,6 @@ with tab3:
             img_processed = process_canvas(canvas_let.image_data)
             if img_processed is not None:
                 pred = model.predict(img_processed)[0]
-                # Mapeamento do EMNIST (10=A, 11=B, 12=C, 13=D, 14=E)
                 letras_map = {10: 'A', 11: 'B', 12: 'C', 13: 'D', 14: 'E'}
                 letra_pred = letras_map.get(pred, str(pred))
                 st.success(f"Letra Predita: {letra_pred}")
