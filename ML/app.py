@@ -9,18 +9,26 @@ from streamlit_drawable_canvas import st_canvas
 # Processamento de imagem do Canvas
 # -------------------------------------------------------------
 def process_canvas(canvas_result):
-    """Extrai e processa a imagem do canvas garantindo a leitura dos traços."""
-    if canvas_result is None or canvas_result.image_data is None:
+    """Extrai e processa a imagem do canvas sem estourar RuntimeError se estiver vazio."""
+    if canvas_result is None:
         return None
 
-    img_array = np.array(canvas_result.image_data, dtype=np.uint8)
+    # Trata a exceção lançada internamente pelo streamlit_drawable_canvas ao acessar image_data
+    try:
+        raw_image = getattr(canvas_result, "image_data", None)
+    except Exception:
+        return None
+
+    if raw_image is None:
+        return None
+
+    img_array = np.array(raw_image, dtype=np.uint8)
 
     if img_array.size == 0:
         return None
 
-    # O canvas retorna RGBA (4 canais). O traço branco pode estar no RGB ou no Alpha.
+    # O canvas retorna RGBA (4 canais). Pega a maior intensidade entre RGB e Alpha
     if len(img_array.shape) == 3 and img_array.shape[2] == 4:
-        # Pega a maior intensidade entre RGB e Alpha para não ignorar o desenho
         rgb_max = np.max(img_array[:, :, :3], axis=2)
         alpha_channel = img_array[:, :, 3]
         img_gray = np.maximum(rgb_max, alpha_channel)
@@ -29,17 +37,17 @@ def process_canvas(canvas_result):
     else:
         img_gray = img_array
 
-    # Se a imagem inteira for 0 (preta/transparente), nada foi desenhado
+    # Se nada foi desenhado (tudo zero)
     if np.max(img_gray) == 0:
         return None
 
     # Redimensiona para 28x28 (padrão EMNIST)
     img_resized = cv2.resize(img_gray, (28, 28), interpolation=cv2.INTER_AREA)
 
-    # Transpor para alinhar a orientação das colunas/linhas do EMNIST
+    # Transposição para alinhar rotação/colunas com a base EMNIST
     img_transposed = cv2.transpose(img_resized)
 
-    # Normalização entre 0 e 1 e flattening para 1x784
+    # Normalização [0, 1] e reshape para formato de entrada (1, 784)
     return img_transposed.reshape(1, -1) / 255.0
 
 
@@ -84,6 +92,7 @@ with tab1:
         height=280,
         width=280,
         drawing_mode="freedraw",
+        update_streamlit=True,
         key=f"canvas_vf_{st.session_state['key_vf']}"
     )
     
@@ -122,6 +131,7 @@ with tab2:
         height=280,
         width=280,
         drawing_mode="freedraw",
+        update_streamlit=True,
         key=f"canvas_num_{st.session_state['key_num']}"
     )
     
@@ -159,6 +169,7 @@ with tab3:
         height=280,
         width=280,
         drawing_mode="freedraw",
+        update_streamlit=True,
         key=f"canvas_let_{st.session_state['key_let']}"
     )
     
@@ -180,3 +191,4 @@ with tab3:
         if st.button("Limpar Canvas", key="clear_let"):
             st.session_state["key_let"] += 1
             st.rerun()
+            
