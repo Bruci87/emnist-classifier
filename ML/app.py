@@ -6,29 +6,38 @@ import streamlit as st
 from streamlit_drawable_canvas import st_canvas
 
 # -------------------------------------------------------------
-# Processamento de imagem do Canvas (Sem importar utils.py)
+# Processamento de imagem do Canvas (Com captura do RuntimeError)
 # -------------------------------------------------------------
 def process_canvas(canvas_result):
-    """Extrai e ajusta o desenho do canvas para a resolução 28x28 e vetor 1x784."""
-    if canvas_result is None or canvas_result.image_data is None:
+    """Extrai e ajusta o desenho do canvas de forma segura para 28x28."""
+    if canvas_result is None:
         return None
 
-    img_array = np.array(canvas_result.image_data)
-
-    # Verifica se a imagem não está totalmente em branco/transparente
-    if img_array.max() == 0:
+    # Tenta acessar o image_data capturando a exceção do componente
+    try:
+        raw_image = canvas_result.image_data
+    except (RuntimeError, AttributeError):
         return None
 
-    # Extrai o canal Alpha ou Red/Grayscale
+    if raw_image is None:
+        return None
+
+    img_array = np.array(raw_image)
+
+    # Verifica se a imagem possui conteúdo válido desenhado
+    if img_array.size == 0 or img_array.max() == 0:
+        return None
+
+    # Extrai canal de cor ou transparência
     if len(img_array.shape) == 3:
         img_gray = img_array[:, :, 0]
     else:
         img_gray = img_array
 
-    # Redimensiona para 28x28
+    # Redimensiona para 28x28 (padrão EMNIST)
     img_resized = cv2.resize(img_gray.astype(np.uint8), (28, 28), interpolation=cv2.INTER_AREA)
 
-    # Normaliza entre 0 e 1 e transforma em vetor 1x784
+    # Normalização entre 0 e 1 e flattening para 1x784
     return img_resized.reshape(1, -1) / 255.0
 
 
