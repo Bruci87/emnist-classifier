@@ -1,48 +1,60 @@
 import os
-import sys
-
-# Garante que o diretório atual do app.py seja o primeiro lugar onde o Python procura arquivos
-CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-if CURRENT_DIR not in sys.path:
-    sys.path.insert(0, CURRENT_DIR)
-
 import joblib
+import cv2
+import numpy as np
 import streamlit as st
 from streamlit_drawable_canvas import st_canvas
 
-# Importa a função do arquivo utils.py localizado na mesma pasta
-try:
-    from utils import process_canvas
-except ImportError:
-    # Fallback para caso o arquivo esteja em uma subpasta ML
-    from ML.utils import process_canvas
+# -------------------------------------------------------------
+# Processamento de imagem do Canvas (Sem importar utils.py)
+# -------------------------------------------------------------
+def process_canvas(canvas_data):
+    """Ajusta o desenho do canvas para a resolução 28x28 e vetor 1x784."""
+    if canvas_data is None:
+        return None
 
-# Carrega o modelo de forma segura usando o diretório do próprio arquivo
+    img_array = np.array(canvas_data)
+
+    if img_array.max() == 0:
+        return None
+
+    if len(img_array.shape) == 3:
+        img_gray = img_array[:, :, 0]
+    else:
+        img_gray = img_array
+
+    # Redimensiona para 28x28
+    img_resized = cv2.resize(img_gray.astype(np.uint8), (28, 28), interpolation=cv2.INTER_AREA)
+
+    # Normaliza entre 0 e 1 e transforma em vetor 1x784
+    return img_resized.reshape(1, -1) / 255.0
+
+
+# -------------------------------------------------------------
+# Carregamento do Modelo .pkl
+# -------------------------------------------------------------
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 @st.cache_resource
 def load_model(cenario):
     """Carrega o modelo .pkl correspondente ao cenário."""
-    # Procura a pasta models tanto no diretório atual quanto dentro de ML/models
-    path_root = os.path.join(CURRENT_DIR, "models", f"melhor_modelo_{cenario}.pkl")
-    path_ml = os.path.join(CURRENT_DIR, "ML", "models", f"melhor_modelo_{cenario}.pkl")
-    
-    model_path = path_root if os.path.exists(path_root) else path_ml
-    
+    model_path = os.path.join(BASE_DIR, "models", f"melhor_modelo_{cenario}.pkl")
     if not os.path.exists(model_path):
         st.error(f"Modelo não encontrado em: {model_path}")
         return None
     return joblib.load(model_path)
 
-# Configuração da página
+
+# -------------------------------------------------------------
+# Interface Streamlit
+# -------------------------------------------------------------
 st.set_page_config(page_title="Classificador EMNIST", layout="wide")
 st.title("Classificador de Símbolos EMNIST")
 st.write("Desenhe o caractere no canvas e clique no botão correspondente para realizar a predição.")
 
-# Abas por cenário
 tab1, tab2, tab3 = st.tabs(["Classificador Binário (V/F)", "Classificador Dígitos (1 a 5)", "Classificador Letras (A a E)"])
 
-# -------------------------------------------------------------
 # TAB 1: V/F
-# -------------------------------------------------------------
 with tab1:
     st.header("1. Classificador Verdadeiro (V) / Falso (F)")
     canvas_vf = st_canvas(
@@ -69,9 +81,7 @@ with tab1:
                 else:
                     st.warning("Por favor, desenhe algo no canvas antes de classificar.")
 
-# -------------------------------------------------------------
 # TAB 2: Dígitos 1 a 5
-# -------------------------------------------------------------
 with tab2:
     st.header("2. Classificador de Dígitos (1 a 5)")
     canvas_num = st_canvas(
@@ -95,9 +105,7 @@ with tab2:
             else:
                 st.warning("Por favor, desenhe algo no canvas antes de classificar.")
 
-# -------------------------------------------------------------
 # TAB 3: Letras A a E
-# -------------------------------------------------------------
 with tab3:
     st.header("3. Classificador de Letras (A a E)")
     canvas_let = st_canvas(
