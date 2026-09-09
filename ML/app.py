@@ -2,19 +2,14 @@ import os
 import joblib
 import streamlit as st
 from streamlit_drawable_canvas import st_canvas
+from utils import process_canvas
 
-# Tenta importação relativa (padrão de pacotes/subpastas); se falhar, usa importação direta
-try:
-    from .utils import process_canvas
-except ImportError:
-    from utils import process_canvas
-
-# Define o caminho absoluto baseado na localização do app.py
+# Carrega o modelo de forma segura usando o diretório do próprio arquivo
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 @st.cache_resource
 def load_model(cenario):
-    """Carrega o modelo .pkl correspondente ao cenário usando caminho absoluto."""
+    """Carrega o modelo .pkl correspondente ao cenário."""
     model_path = os.path.join(BASE_DIR, "models", f"melhor_modelo_{cenario}.pkl")
     if not os.path.exists(model_path):
         st.error(f"Modelo não encontrado em: {model_path}")
