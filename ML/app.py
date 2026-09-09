@@ -1,104 +1,109 @@
-import streamlit as st
+import os
 import joblib
+import streamlit as st
 from streamlit_drawable_canvas import st_canvas
-from src.utils import process_canvas
+from utils import process_canvas
 
-st.set_page_config(page_title="Classificador EMNIST - Multiprova", layout="wide")
+# Define o caminho absoluto baseado na localização deste próprio arquivo (pasta ML)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
+@st.cache_resource
+def load_model(cenario):
+    """Carrega o modelo .pkl correspondente ao cenário usando caminho absoluto."""
+    model_path = os.path.join(BASE_DIR, "models", f"melhor_modelo_{cenario}.pkl")
+    if not os.path.exists(model_path):
+        st.error(f"Modelo não encontrado em: {model_path}")
+        return None
+    return joblib.load(model_path)
+
+# Configuração da página
+st.set_page_config(page_title="Classificador EMNIST", layout="wide")
 st.title("Classificador de Símbolos EMNIST")
 st.write("Desenhe o caractere no canvas e clique no botão correspondente para realizar a predição.")
 
-# Inicializa chaves no session_state para controlar o reset dos canvas
-for key in ["key_vf", "key_1_5", "key_A_E"]:
-    if key not in st.session_state:
-        st.session_state[key] = 0
+# Abas por cenário
+tab1, tab2, tab3 = st.tabs(["Classificador Binário (V/F)", "Classificador Dígitos (1 a 5)", "Classificador Letras (A a E)"])
 
-# Cria as 3 abas
-tab1, tab2, tab3 = st.tabs([
-    "Classificador Binário (V/F)", 
-    "Classificador Dígitos (1 a 5)", 
-    "Classificador Letras (A a E)"
-])
-
-# Configurações padrão para a área de desenho
-CANVAS_CONFIG = {
-    "stroke_width": 20,
-    "stroke_color": "#FFFFFF",
-    "background_color": "#000000",
-    "height": 280,
-    "width": 280,
-    "drawing_mode": "freedraw",
-    "return_image_data": True
-}
-
-# --- Aba 1: Verdadeiro / Falso ---
+# -------------------------------------------------------------
+# TAB 1: V/F
+# -------------------------------------------------------------
 with tab1:
     st.header("1. Classificador Verdadeiro (V) / Falso (F)")
-    canvas_vf = st_canvas(**CANVAS_CONFIG, key=f"canvas_vf_{st.session_state['key_vf']}")
+    canvas_vf = st_canvas(
+        fill_color="black",
+        stroke_width=15,
+        stroke_color="white",
+        background_color="black",
+        height=280,
+        width=280,
+        drawing_mode="freedraw",
+        key="canvas_vf"
+    )
     
     col1, col2 = st.columns([1, 1])
     with col1:
-        if st.button("Classificar V/F"):
-            img_vector = process_canvas(canvas_vf.image_data)
-            if img_vector is not None:
-                try:
-                    model = joblib.load("models/melhor_modelo_VF.pkl")
-                    pred = model.predict(img_vector)[0]
-                    resultado = "Verdadeiro (V)" if pred == 1 else "Falso (F)"
-                    st.success(f"**Resultado:** {resultado}")
-                except Exception as e:
-                    st.error("Modelo não encontrado. Execute `python train_pipeline.py` no terminal.")
-            else:
-                st.warning("Desenhe um caractere antes de classificar.")
-    with col2:
-        if st.button("Limpar Canvas", key="btn_clear_vf"):
-            st.session_state["key_vf"] += 1
-            st.rerun()
+        if st.button("Classificar V/F", key="btn_vf"):
+            model = load_model("VF")
+            if model and canvas_vf.image_data is not None:
+                img_processed = process_canvas(canvas_vf.image_data)
+                if img_processed is not None:
+                    pred = model.predict(img_processed)[0]
+                    res = "Verdadeiro (V)" if pred == 1 else "Falso (F)"
+                    st.success(f"Resultado: {res}")
+                else:
+                    st.warning("Por favor, desenhe algo no canvas antes de classificar.")
 
-# --- Aba 2: Dígitos 1 a 5 ---
+# -------------------------------------------------------------
+# TAB 2: Dígitos 1 a 5
+# -------------------------------------------------------------
 with tab2:
     st.header("2. Classificador de Dígitos (1 a 5)")
-    canvas_num = st_canvas(**CANVAS_CONFIG, key=f"canvas_1_5_{st.session_state['key_1_5']}")
+    canvas_num = st_canvas(
+        fill_color="black",
+        stroke_width=15,
+        stroke_color="white",
+        background_color="black",
+        height=280,
+        width=280,
+        drawing_mode="freedraw",
+        key="canvas_num"
+    )
     
-    col1, col2 = st.columns([1, 1])
-    with col1:
-        if st.button("Classificar Dígito"):
-            img_vector = process_canvas(canvas_num.image_data)
-            if img_vector is not None:
-                try:
-                    model = joblib.load("models/melhor_modelo_1_5.pkl")
-                    pred = model.predict(img_vector)[0]
-                    st.success(f"**Dígito Predito:** {pred}")
-                except Exception as e:
-                    st.error("Modelo não encontrado. Execute `python train_pipeline.py` no terminal.")
+    if st.button("Classificar Dígito", key="btn_num"):
+        model = load_model("1_5")
+        if model and canvas_num.image_data is not None:
+            img_processed = process_canvas(canvas_num.image_data)
+            if img_processed is not None:
+                pred = model.predict(img_processed)[0]
+                st.success(f"Dígito Predito: {pred}")
             else:
-                st.warning("Desenhe um dígito antes de classificar.")
-    with col2:
-        if st.button("Limpar Canvas", key="btn_clear_1_5"):
-            st.session_state["key_1_5"] += 1
-            st.rerun()
+                st.warning("Por favor, desenhe algo no canvas antes de classificar.")
 
-# --- Aba 3: Letras A a E ---
+# -------------------------------------------------------------
+# TAB 3: Letras A a E
+# -------------------------------------------------------------
 with tab3:
     st.header("3. Classificador de Letras (A a E)")
-    canvas_letra = st_canvas(**CANVAS_CONFIG, key=f"canvas_A_E_{st.session_state['key_A_E']}")
+    canvas_let = st_canvas(
+        fill_color="black",
+        stroke_width=15,
+        stroke_color="white",
+        background_color="black",
+        height=280,
+        width=280,
+        drawing_mode="freedraw",
+        key="canvas_let"
+    )
     
-    col1, col2 = st.columns([1, 1])
-    with col1:
-        if st.button("Classificar Letra"):
-            img_vector = process_canvas(canvas_letra.image_data)
-            if img_vector is not None:
-                try:
-                    model = joblib.load("models/melhor_modelo_A_E.pkl")
-                    pred = model.predict(img_vector)[0]
-                    mapeamento = {10: 'A', 11: 'B', 12: 'C', 13: 'D', 14: 'E'}
-                    letra = mapeamento.get(pred, str(pred))
-                    st.success(f"**Letra Predita:** {letra}")
-                except Exception as e:
-                    st.error("Modelo não encontrado. Execute `python train_pipeline.py` no terminal.")
+    if st.button("Classificar Letra", key="btn_let"):
+        model = load_model("A_E")
+        if model and canvas_let.image_data is not None:
+            img_processed = process_canvas(canvas_let.image_data)
+            if img_processed is not None:
+                pred = model.predict(img_processed)[0]
+                # Mapeamento do EMNIST (10=A, 11=B, 12=C, 13=D, 14=E)
+                letras_map = {10: 'A', 11: 'B', 12: 'C', 13: 'D', 14: 'E'}
+                letra_pred = letras_map.get(pred, str(pred))
+                st.success(f"Letra Predita: {letra_pred}")
             else:
-                st.warning("Desenhe uma letra antes de classificar.")
-    with col2:
-        if st.button("Limpar Canvas", key="btn_clear_A_E"):
-            st.session_state["key_A_E"] += 1
-            st.rerun()
+                st.warning("Por favor, desenhe algo no canvas antes de classificar.")
