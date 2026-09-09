@@ -9,23 +9,15 @@ from streamlit_drawable_canvas import st_canvas
 # Processamento de imagem do Canvas
 # -------------------------------------------------------------
 def process_canvas(canvas_result):
-    if canvas_result is None:
-        return None, "canvas_result é None"
+    if canvas_result is None or canvas_result.image_data is None:
+        return None, "Aguardando desenho..."
 
-    try:
-        raw_data = canvas_result.image_data
-    except Exception as e:
-        return None, f"Erro ao acessar image_data: {e}"
-
-    if raw_data is None:
-        return None, "image_data é None"
-
-    img_array = np.array(raw_data, dtype=np.uint8)
+    img_array = np.array(canvas_result.image_data, dtype=np.uint8)
 
     if img_array.size == 0:
         return None, "Array vazio"
 
-    # Junta todos os canais para pegar qualquer intensidade do desenho
+    # Extrai o canal de intensidade do traço
     if len(img_array.shape) == 3:
         img_gray = np.max(img_array, axis=2)
     else:
@@ -74,16 +66,15 @@ with tab1:
     
     with col_canvas:
         canvas_vf = st_canvas(
-            fill_color="black",
+            fill_color="rgba(255, 255, 255, 0)",
             stroke_width=20,
-            stroke_color="white",
-            background_color="black",
+            stroke_color="#FFFFFF",
+            background_color="#000000",
             height=280,
             width=280,
             drawing_mode="freedraw",
             update_streamlit=True,
-            display_toolbar=True,
-            key="canvas_vf_fixed"
+            key="canvas_vf_clean"
         )
 
     with col_pred:
@@ -108,16 +99,15 @@ with tab2:
     
     with col_canvas:
         canvas_num = st_canvas(
-            fill_color="black",
+            fill_color="rgba(255, 255, 255, 0)",
             stroke_width=20,
-            stroke_color="white",
-            background_color="black",
+            stroke_color="#FFFFFF",
+            background_color="#000000",
             height=280,
             width=280,
             drawing_mode="freedraw",
             update_streamlit=True,
-            display_toolbar=True,
-            key="canvas_num_fixed"
+            key="canvas_num_clean"
         )
 
     with col_pred:
@@ -141,16 +131,15 @@ with tab3:
     
     with col_canvas:
         canvas_let = st_canvas(
-            fill_color="black",
+            fill_color="rgba(255, 255, 255, 0)",
             stroke_width=20,
-            stroke_color="white",
-            background_color="black",
+            stroke_color="#FFFFFF",
+            background_color="#000000",
             height=280,
             width=280,
             drawing_mode="freedraw",
             update_streamlit=True,
-            display_toolbar=True,
-            key="canvas_let_fixed"
+            key="canvas_let_clean"
         )
 
     with col_pred:
