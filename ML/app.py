@@ -6,14 +6,13 @@ import streamlit as st
 from streamlit_drawable_canvas import st_canvas
 
 # -------------------------------------------------------------
-# Processamento de imagem do Canvas (Com captura do RuntimeError)
+# Processamento de imagem do Canvas
 # -------------------------------------------------------------
 def process_canvas(canvas_result):
-    """Extrai e ajusta o desenho do canvas de forma segura para 28x28."""
+    """Extrai o desenho do canvas tratando transparência e fundo."""
     if canvas_result is None:
         return None
 
-    # Tenta acessar o image_data capturando a exceção do componente
     try:
         raw_image = canvas_result.image_data
     except (RuntimeError, AttributeError):
@@ -22,22 +21,32 @@ def process_canvas(canvas_result):
     if raw_image is None:
         return None
 
-    img_array = np.array(raw_image)
+    img_array = np.array(raw_image, dtype=np.uint8)
 
-    # Verifica se a imagem possui conteúdo válido desenhado
-    if img_array.size == 0 or img_array.max() == 0:
+    if img_array.size == 0:
         return None
 
-    # Extrai canal de cor ou transparência
-    if len(img_array.shape) == 3:
-        img_gray = img_array[:, :, 0]
+    # Se a imagem tiver 4 canais (RGBA), extraímos a escala de cinza combinando RGB ou Alpha
+    if len(img_array.shape) == 3 and img_array.shape[2] == 4:
+        # Pega a intensidade máxima entre os canais RGB para detectar a tinta branca
+        img_gray = np.max(img_array[:, :, :3], axis=2)
+        
+        # Se os canais RGB não pegarem nada, tenta o canal Alpha
+        if img_gray.max() == 0:
+            img_gray = img_array[:, :, 3]
+    elif len(img_array.shape) == 3:
+        img_gray = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
     else:
         img_gray = img_array
 
-    # Redimensiona para 28x28 (padrão EMNIST)
-    img_resized = cv2.resize(img_gray.astype(np.uint8), (28, 28), interpolation=cv2.INTER_AREA)
+    # Se mesmo assim tudo for 0, o usuário não desenhou nada
+    if img_gray.max() == 0:
+        return None
 
-    # Normalização entre 0 e 1 e flattening para 1x784
+    # Redimensiona para 28x28 (padrão EMNIST)
+    img_resized = cv2.resize(img_gray, (28, 28), interpolation=cv2.INTER_AREA)
+
+    # Normalização entre 0 e 1 e vetorização para 1x784
     return img_resized.reshape(1, -1) / 255.0
 
 
@@ -78,6 +87,7 @@ with tab1:
         height=280,
         width=280,
         drawing_mode="freedraw",
+        display_toolbar=True,  # Restaura a barra de ferramentas (desfazer, limpar, lixeira)
         key="canvas_vf"
     )
     
@@ -107,6 +117,7 @@ with tab2:
         height=280,
         width=280,
         drawing_mode="freedraw",
+        display_toolbar=True,  # Restaura a barra de ferramentas
         key="canvas_num"
     )
     
@@ -133,6 +144,7 @@ with tab3:
         height=280,
         width=280,
         drawing_mode="freedraw",
+        display_toolbar=True,  # Restaura a barra de ferramentas
         key="canvas_let"
     )
     
