@@ -8,16 +8,18 @@ from streamlit_drawable_canvas import st_canvas
 # -------------------------------------------------------------
 # Processamento de imagem do Canvas (Sem importar utils.py)
 # -------------------------------------------------------------
-def process_canvas(canvas_data):
-    """Ajusta o desenho do canvas para a resolução 28x28 e vetor 1x784."""
-    if canvas_data is None:
+def process_canvas(canvas_result):
+    """Extrai e ajusta o desenho do canvas para a resolução 28x28 e vetor 1x784."""
+    if canvas_result is None or canvas_result.image_data is None:
         return None
 
-    img_array = np.array(canvas_data)
+    img_array = np.array(canvas_result.image_data)
 
+    # Verifica se a imagem não está totalmente em branco/transparente
     if img_array.max() == 0:
         return None
 
+    # Extrai o canal Alpha ou Red/Grayscale
     if len(img_array.shape) == 3:
         img_gray = img_array[:, :, 0]
     else:
@@ -54,7 +56,9 @@ st.write("Desenhe o caractere no canvas e clique no botão correspondente para r
 
 tab1, tab2, tab3 = st.tabs(["Classificador Binário (V/F)", "Classificador Dígitos (1 a 5)", "Classificador Letras (A a E)"])
 
+# -------------------------------------------------------------
 # TAB 1: V/F
+# -------------------------------------------------------------
 with tab1:
     st.header("1. Classificador Verdadeiro (V) / Falso (F)")
     canvas_vf = st_canvas(
@@ -72,8 +76,8 @@ with tab1:
     with col1:
         if st.button("Classificar V/F", key="btn_vf"):
             model = load_model("VF")
-            if model and canvas_vf.image_data is not None:
-                img_processed = process_canvas(canvas_vf.image_data)
+            if model:
+                img_processed = process_canvas(canvas_vf)
                 if img_processed is not None:
                     pred = model.predict(img_processed)[0]
                     res = "Verdadeiro (V)" if pred == 1 else "Falso (F)"
@@ -81,7 +85,9 @@ with tab1:
                 else:
                     st.warning("Por favor, desenhe algo no canvas antes de classificar.")
 
+# -------------------------------------------------------------
 # TAB 2: Dígitos 1 a 5
+# -------------------------------------------------------------
 with tab2:
     st.header("2. Classificador de Dígitos (1 a 5)")
     canvas_num = st_canvas(
@@ -97,15 +103,17 @@ with tab2:
     
     if st.button("Classificar Dígito", key="btn_num"):
         model = load_model("1_5")
-        if model and canvas_num.image_data is not None:
-            img_processed = process_canvas(canvas_num.image_data)
+        if model:
+            img_processed = process_canvas(canvas_num)
             if img_processed is not None:
                 pred = model.predict(img_processed)[0]
                 st.success(f"Dígito Predito: {pred}")
             else:
                 st.warning("Por favor, desenhe algo no canvas antes de classificar.")
 
+# -------------------------------------------------------------
 # TAB 3: Letras A a E
+# -------------------------------------------------------------
 with tab3:
     st.header("3. Classificador de Letras (A a E)")
     canvas_let = st_canvas(
@@ -121,8 +129,8 @@ with tab3:
     
     if st.button("Classificar Letra", key="btn_let"):
         model = load_model("A_E")
-        if model and canvas_let.image_data is not None:
-            img_processed = process_canvas(canvas_let.image_data)
+        if model:
+            img_processed = process_canvas(canvas_let)
             if img_processed is not None:
                 pred = model.predict(img_processed)[0]
                 letras_map = {10: 'A', 11: 'B', 12: 'C', 13: 'D', 14: 'E'}
