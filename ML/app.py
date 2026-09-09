@@ -1,15 +1,16 @@
 import os
-import sys
-
-# Adiciona o diretório atual (pasta ML) ao sys.path para o Python encontrar utils.py
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-if BASE_DIR not in sys.path:
-    sys.path.append(BASE_DIR)
-
 import joblib
 import streamlit as st
 from streamlit_drawable_canvas import st_canvas
-from utils import process_canvas
+
+# Tenta importação relativa (padrão de pacotes/subpastas); se falhar, usa importação direta
+try:
+    from .utils import process_canvas
+except ImportError:
+    from utils import process_canvas
+
+# Define o caminho absoluto baseado na localização do app.py
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 @st.cache_resource
 def load_model(cenario):
