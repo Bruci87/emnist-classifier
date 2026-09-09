@@ -1,16 +1,32 @@
 import os
+import sys
+
+# Garante que o diretório atual do app.py seja o primeiro lugar onde o Python procura arquivos
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+if CURRENT_DIR not in sys.path:
+    sys.path.insert(0, CURRENT_DIR)
+
 import joblib
 import streamlit as st
 from streamlit_drawable_canvas import st_canvas
-from utils import process_canvas
+
+# Importa a função do arquivo utils.py localizado na mesma pasta
+try:
+    from utils import process_canvas
+except ImportError:
+    # Fallback para caso o arquivo esteja em uma subpasta ML
+    from ML.utils import process_canvas
 
 # Carrega o modelo de forma segura usando o diretório do próprio arquivo
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
 @st.cache_resource
 def load_model(cenario):
     """Carrega o modelo .pkl correspondente ao cenário."""
-    model_path = os.path.join(BASE_DIR, "models", f"melhor_modelo_{cenario}.pkl")
+    # Procura a pasta models tanto no diretório atual quanto dentro de ML/models
+    path_root = os.path.join(CURRENT_DIR, "models", f"melhor_modelo_{cenario}.pkl")
+    path_ml = os.path.join(CURRENT_DIR, "ML", "models", f"melhor_modelo_{cenario}.pkl")
+    
+    model_path = path_root if os.path.exists(path_root) else path_ml
+    
     if not os.path.exists(model_path):
         st.error(f"Modelo não encontrado em: {model_path}")
         return None
